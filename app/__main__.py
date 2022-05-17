@@ -1,5 +1,7 @@
 import xml.etree.ElementTree as ElementTree
 
+from app.schema import Schema
+
 PATH = '/home/ksergey/dev/pysbe/resources/FixBinary.xml'
 
 def open_xml_schema(path) -> ElementTree.Element:
@@ -20,8 +22,8 @@ def open_xml_schema(path) -> ElementTree.Element:
     return root
 
 def main() -> None:
-    root = open_xml_schema(PATH)
-    print(root.attrib)
+    schema = Schema(open_xml_schema(PATH))
+    print(schema.types)
 
 if __name__ == '__main__':
     main()
