@@ -1,69 +1,135 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Union, Optional
+from typing import Optional, List, Union
 
 class Presence(Enum):
     REQUIRED = 'required'
     OPTIONAL = 'optional'
     CONSTANT = 'constant'
 
+class ByteOrder(Enum):
+    LITTLE_ENDIAN = 'littleEndian'
+    BIG_ENDIAN = 'bitEndian'
+
 @dataclass
-class PrimitiveType:
+class Type:
     name: str
-    size: int
-    value_min: str
-    value_max: str
-    value_null: str
+    primitive_type: str
+    description: Optional[str] = None
+    presence: Presence = Presence.REQUIRED
+    null_value: Optional[str] = None
+    min_value: Optional[str] = None
+    max_value: Optional[str] = None
+    length: int = 1
+    offset: Optional[int] = None
+    semantic_type: Optional[str] = None
+    since_version: int = 0
+    deprecated: Optional[int] = None
+    value: Optional[str] = None
 
-AnyType = Union[PrimitiveType]
+@dataclass
+class Composite:
+    name: str
+    description: Optional[str] = None
+    offset: Optional[int] = None
+    semantic_type: Optional[str] = None
+    since_version: int = 0
+    deprecated: Optional[int] = None
+    elements: List[Union[Type, Composite, Ref, Enum, Set]] = field(default_factory=list)
 
-class SchemaBase(object):
-    def __init__(self) -> None:
-        self.types = [
-            PrimitiveType(name='char', size=1, value_min='CHAR_VALUE_MIN', value_max='CHAR_VALUE_MAX',
-                          value_null='CHAR_VALUE_NULL'),
-            PrimitiveType(name='int8', size=1, value_min='INT8_VALUE_MIN', value_max='INT8_VALUE_MAX',
-                          value_null='INT8_VALUE_NULL'),
-            PrimitiveType(name='int16', size=2, value_min='INT16_VALUE_MIN', value_max='INT16_VALUE_MAX',
-                          value_null='INT16_VALUE_NULL'),
-            PrimitiveType(name='int32', size=4, value_min='INT32_VALUE_MIN', value_max='INT32_VALUE_MAX',
-                          value_null='INT32_VALUE_NULL'),
-            PrimitiveType(name='int64', size=8, value_min='INT64_VALUE_MIN', value_max='INT64_VALUE_MAX',
-                          value_null='INT64_VALUE_NULL'),
-            PrimitiveType(name='uint8', size=1, value_min='UINT8_VALUE_MIN', value_max='UINT8_VALUE_MAX',
-                          value_null='UINT8_VALUE_NULL'),
-            PrimitiveType(name='uint16', size=2, value_min='UINT16_VALUE_MIN', value_max='UINT16_VALUE_MAX',
-                          value_null='UINT16_VALUE_NULL'),
-            PrimitiveType(name='uint32', size=4, value_min='UINT32_VALUE_MIN', value_max='UINT32_VALUE_MAX',
-                          value_null='UINT32_VALUE_NULL'),
-            PrimitiveType(name='uint64', size=8, value_min='UINT64_VALUE_MIN', value_max='UINT64_VALUE_MAX',
-                          value_null='UINT64_VALUE_NULL'),
-            PrimitiveType(name='float', size=4, value_min='FLOAT_VALUE_MIN', value_max='FLOAT_VALUE_MAX',
-                          value_null='FLOAT_VALUE_NULL'),
-            PrimitiveType(name='double', size=8, value_min='DOUBLE_VALUE_MIN', value_max='DOUBLE_VALUE_MAX',
-                          value_null='DOUBLE_VALUE_NULL')
-        ]
+@dataclass
+class Ref:
+    name: str
+    type: str
+    offset: Optional[int] = None
+    since_version: int = 0
+    deprecated: Optional[int] = None
 
-    def find_type(self, name: str) -> Optional[AnyType]:
-        for type in self.types:
-            if type.name == name:
-                return type
-        return None
+@dataclass
+class Enum:
+    name: str
+    encoding_type: str
+    description: Optional[str] = None
+    offset: Optional[int] = None
+    since_version: int = 0
+    deprecated: Optional[int] = None
+    elements: List[ValidValue] = field(default_factory=list)
 
-    def get_type(self, name: str) -> AnyType:
-        type = self.find_type(name)
-        if type is None:
-            raise Exception('type "{name}" not found')
-        return type
+@dataclass
+class ValidValue:
+    name: str
+    value: str
+    description: Optional[str] = None
+    since_version: int = 0
+    deprecated: Optional[int] = None
 
-    def add_type(self, type: AnyType) -> None:
-        if self.find_type(type.name) is not None:
-            raise Exception('type "{type.name}" already exists')
-        self.types.append(type)
+@dataclass
+class Set:
+    name: str
+    encoding_type: str
+    description: Optional[str] = None
+    offset: Optional[int] = None
+    since_version: int = 0
+    deprecated: Optional[int] = None
+    elements: List[Choice] = field(default_factory=list)
 
+@dataclass
+class Choice:
+    name: str
+    value: str
+    description: Optional[str] = None
+    since_version: int = 0
+    deprecated: Optional[int] = None
 
-class Schema(SchemaBase):
-    def __init__(self, root) -> None:
-        super().__init__()
-        self._root = root
+@dataclass
+class Field:
+    name: str
+    id: int
+    type: str
+    description: Optional[str] = None
+    offset: Optional[int] = 0
+    presence: Presence = Presence.REQUIRED
+    value_ref: Optional[str] = None
+    since_version: int = 0
+    deprecated: Optional[int] = None
+
+@dataclass
+class Group:
+    name: str
+    id: int
+    description: Optional[str] = None
+    dimension_type: str = 'groupSizeEncoding'
+    elements: List[Union[Field, Group, Data]] = field(default_factory=list)
+
+@dataclass
+class Data:
+    name: str
+    id: int
+    type: str
+    semantic_type: Optional[str] = None
+    since_version: int = 0
+    deprecated: Optional[int] = None
+
+@dataclass
+class Message:
+    name: str
+    id: int
+    description: Optional[str] = None
+    block_length: Optional[int] = None
+    semantic_type: Optional[str] = None
+    since_version: int = 0
+    deprecated: Optional[int] = None
+    elements: List[Union[Field, Group, Data]] = field(default_factory=list)
+
+@dataclass
+class Schema:
+    package: str
+    id: int
+    version: int
+    semantic_version: Optional[str] = None
+    byte_order: ByteOrder = ByteOrder.LITTLE_ENDIAN
+    description: Optional[str] = None
+    header_type: str = 'messageHeader'
+    types: List[Union[Type, Composite, Enum, Set]] = field(default_factory=list)
+    messages: List[Message] = field(default_factory=list)
